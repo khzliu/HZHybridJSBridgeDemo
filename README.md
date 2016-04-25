@@ -1,2 +1,5 @@
-# HZHybridJSBridgeDemo
-基于WKWebview/UIWebview的Hybrid开发框架
+# HZHybridJSBridge
+
+##基于WKWebView/UIWebview的Hybrid APP开发框架
+
+###实现Javascript与Native的高效的Bridge

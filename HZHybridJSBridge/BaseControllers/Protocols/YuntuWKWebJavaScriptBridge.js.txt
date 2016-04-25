@@ -1,0 +1,136 @@
+if (window.Yuntu) { return };
+
+var _agent = AGENT; //版本号
+var methodHandlers = {};
+
+//--------------------公开方法--------------------
+function agent(){
+    return _agent;
+}
+
+//公开的接口 向Native发送消息
+function send(jstype, message, responseCallback) {
+    if(!Yuntu){return}
+    _doSend(jstype, message, responseCallback);
+}
+//同步方法
+function syncall(jstype,data,extra){
+    var messageData = {
+        js_tag:jstype,
+        data:data
+    }
+    return prompt(JSON.stringify(messageData),JSON.stringify(extra));
+}
+//javascript callback 函数
+function callback(cb,data){
+    if(!cb||cb.length<1){
+        return;
+    }
+    var self=callback;
+    if(!self.cbs){
+        return;
+    }
+    cb = self.cbs[cb];
+    if(!cb){
+        return;
+    }
+
+    if(data){
+        cb(data);
+    }
+}
+
+//注册函数
+function registerHandler(eventName, handler) {
+    methodHandlers[eventName] = handler
+}
+
+//调用已经注册的函数
+function callHandler(eventName, message) {
+    var methodHandler;
+    if(eventName){
+        methodHandler = methodHandlers[eventName];
+        if(methodHandler){
+            try {
+                var respdata = methodHandler(message);
+                var resp = {
+                    ret: 0,
+                    msg: "success!",
+                    result: respdata
+                }
+
+                return resp;
+            } catch(exception) {
+                if (typeof console != 'undefined') {
+                    console.log("WebViewJavascriptBridge: WARNING: javascript handler threw.", message, exception)
+                }
+
+                var resp = {
+                    ret: 5,
+                    msg: "exception throw!",
+                    result:{}
+                };
+                return resp;
+            }
+        }else{
+            var resp = {
+                ret: 3,
+                msg: "method not found!",
+                result:{}
+            };
+            return resp;
+        }
+    }else{
+        var resp = {
+            ret: 1,
+            msg: "method not registed!",
+            result:{}
+        };
+        return resp;
+    }
+}
+//--------------------私有方法--------------------
+
+//javascript callback注册函数
+function regcb(func){
+    if(!func)return "";
+    if(!func.cbidx){
+        var self=callback;
+        if(!self.cbs)self.cbs={cnt:0};
+        self=self.cbs;
+        func.cbidx="cb"+(self.cnt++);
+        self[func.cbidx]=func;
+    }
+    return func.cbidx;
+}
+
+//私有的接口 向Native发送消息
+function _doSend(jstype, message, responseCallback) {
+
+    var msgbody = {};
+    msgbody['js_tag'] = jstype;
+
+    if (msgbody) {
+        msgbody['js_data'] = message;
+    };
+    if (responseCallback) {
+        var callbackId = regcb(responseCallback);
+        msgbody['js_cb'] = callbackId;
+    }
+
+    window.webkit.messageHandlers.YuntuBridge.postMessage(msgbody);
+}
+
+window.Yuntu = {
+    send: send,
+    agent: agent,
+    callback: callback,
+    registerHandler: registerHandler,
+    callHandler: callHandler,
+    syncall: syncall
+};
+
+var doc = document;
+var readyEvent = doc.createEvent('Events');
+readyEvent.initEvent('YuntuWebViewJavascriptBridgeReady');
+doc.dispatchEvent(readyEvent);
